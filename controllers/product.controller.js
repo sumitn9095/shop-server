@@ -1,4 +1,5 @@
 const Product = require('../models/products');
+const OrderedProducts = require('../models/orderedProducts');
 
 const fetchAllProducts = (req,res,next) => {
     Product.find()
@@ -7,10 +8,11 @@ const fetchAllProducts = (req,res,next) => {
 }
 
 const filterProducts = (req,res,next) => {
-    const {name, category, instock,priceFrom, priceTo, date} = req.body;
-
+    const {name, category, instock,priceFrom, priceTo, orderId, date} = req.body;
     console.log("req.body",req.body);
-    
+
+
+    // ---------- building Query ---- start -----------
     let matchQuery = {};
     if(name) {
         matchQuery = {
@@ -28,6 +30,9 @@ const filterProducts = (req,res,next) => {
     } else {
         matchQuery.instock = true;
     }
+    // ---------- building Query ---- end -----------
+    
+
 
     console.log("matchQuery",matchQuery);
 
@@ -43,7 +48,7 @@ const filterProducts = (req,res,next) => {
   //  Product.createIndexes( { name: "text" } )
 
     Product.aggregate([
-        {
+        
             // $match: { 
             //     $expr: {
             //         $or: [
@@ -62,6 +67,7 @@ const filterProducts = (req,res,next) => {
             //     }
             // }
 
+        {
            $match : 
                 // {
                 //     $text: { $search : `\"${name}\"` },

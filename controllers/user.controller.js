@@ -1,89 +1,105 @@
-const User = require("../models/users")
+const User = require("../models/users");
 var bcrypt = require("bcrypt");
 var jwt = require("jsonwebtoken");
-require('dotenv').config();
+require("dotenv").config();
 
 const generateUrlOtp = (password) => {
-    let otpRaw = bcrypt.hashSync(password, 13);
-    let otpRaw2;
-    let otpRaw3;
-    let otp;
-  
-    if(otpRaw.includes("/")) otpRaw2 = otpRaw.replaceAll("/",'');
-    else otpRaw2 = otpRaw;
-    if(otpRaw2.includes("\\")) otp = otpRaw2.replaceAll("\\",'');
-    else otpRaw3 = otpRaw2;
-    if(otpRaw3.includes("$")) otp = otpRaw3.replaceAll("$",'');
-    else otp = otpRaw3;
-    return otp;
-  }
+  let otpRaw = bcrypt.hashSync(password, 13);
+  let otpRaw2;
+  let otpRaw3;
+  let otp;
 
-const register = async(req,res,next) => {
-    var { name, email, password, gender, occupation, phone, designation, birthDate } = req.body;
-   // console.log("user being created:",req.body);
-    try {
-    User.findOne({ email : email})
-        .then(user=>{
-            return res.status(409).send({message: 'Email already exists', user});
-        })
-        .catch(err=>res.send({err}))
-       // console.log("user being created:",err,data);
+  if (otpRaw.includes("/")) otpRaw2 = otpRaw.replaceAll("/", "");
+  else otpRaw2 = otpRaw;
+  if (otpRaw2.includes("\\")) otp = otpRaw2.replaceAll("\\", "");
+  else otpRaw3 = otpRaw2;
+  if (otpRaw3.includes("$")) otp = otpRaw3.replaceAll("$", "");
+  else otp = otpRaw3;
+  return otp;
+};
 
-    if(password.length < 6) {
-      return res.status(400).json({ message : 'Password should be strong'})
-    }
-    
-      //let otp = generateUrlOtp(password);
-      let pw = bcrypt.hashSync(password, 8);
-  
-      await User.create({
-        name : name,
-        email : email,
-        password : pw,
-        details: {gender, occupation, phone, designation, birthDate}
+const register = async (req, res, next) => {
+  var {
+    name,
+    email,
+    password,
+    gender,
+    occupation,
+    phone,
+    designation,
+    birthDate,
+  } = req.body;
+  // console.log("user being created:",req.body);
+  try {
+    User.findOne({ email: email })
+      .then((user) => {
+        return res.status(409).send({ message: "Email already exists", user });
       })
-      .then(user => {
-        res.send({user, message: "User Created successfully"})
-      })
-      .catch(err=>res.send({err}))
-    } catch (err) {
-      //res.status(401).send({ message : err, error: err})
-    }
-  }
+      .catch((err) => res.send({ err }));
+    // console.log("user being created:",err,data);
 
-const getUser = (req,res,next) => {
-  User.findOne({ email : email })
-    .then(user=>{
-      res.send({user})
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password should be strong" });
+    }
+
+    //let otp = generateUrlOtp(password);
+    let pw = bcrypt.hashSync(password, 8);
+
+    await User.create({
+      name: name,
+      email: email,
+      password: pw,
+      details: { gender, occupation, phone, designation, birthDate },
     })
-    .catch(err=>res.send({err, message: "User not found"}))
-}
-
-const signin = async(req,res,next) => {
-    var { email, password } = req.body;
-    User.findOne({ email : email })
-        .then(user=>{
-            if(!user) return res.status(404).json({ message : `User not found with email '${email}'` });
-            var pwIsValid = bcrypt.compareSync(password, user.password);
-            if(!pwIsValid) return res.status(401).send({ message : 'Invalid password', token : null});
-            var token = jwt.sign({email}, process.env.API_SECRET, {expiresIn : process.env.JWTEXP});
-            let orderId = bcrypt.hashSync(password, 3);
-            res.status(200).json({
-                user: {
-                    id: user._id,
-                    name: user.name,
-                    email: user.email,
-                    orderId
-                },
-                message: "Login susscessful",
-                token: token
-            })
-
-           
-        })
-        .catch(err=>{
-            return res.status(404).json({err, message : 'User Not found' ?? err.message}); 
-        })
+      .then((user) => {
+        res.send({ user, message: "User Created successfully" });
+      })
+      .catch((err) => res.send({ err }));
+  } catch (err) {
+    //res.status(401).send({ message : err, error: err})
   }
+};
 
-  module.exports = {register, signin}
+const getUser = (req, res, next) => {
+  User.findOne({ email: email })
+    .then((user) => {
+      res.send({ user });
+    })
+    .catch((err) => res.send({ err, message: "User not found" }));
+};
+
+const signin = async (req, res, next) => {
+  var { email, password } = req.body;
+  User.findOne({ email: email })
+    .then((user) => {
+      if (!user)
+        return res
+          .status(404)
+          .json({ message: `User not found with email '${email}'` });
+      var pwIsValid = bcrypt.compareSync(password, user.password);
+      if (!pwIsValid)
+        return res
+          .status(401)
+          .send({ message: "Invalid password", token: null });
+      var token = jwt.sign({ email }, process.env.API_SECRET, {
+        expiresIn: process.env.JWTEXP,
+      });
+      //let orderId = bcrypt.hashSync(password, 3);
+      res.status(200).json({
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+        },
+        message: "Login susscessful",
+        token: token,
+      });
+    })
+    .catch((err) => {
+      return res
+        .status(404)
+        .json({ err, message: "User Not found" ?? err.message });
+    });
+};
+
+module.exports = { register, signin };
