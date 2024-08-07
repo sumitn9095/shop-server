@@ -22,5 +22,8 @@ orderRoute
   .route("/addProductToOrderedProducts")
   .post(orderController.addProductToOrderedProducts);
 orderRoute.route("/fetch_orderId").post(orderController.fetch_orderId);
+orderRoute.route("/orderInit").post(orderController.orderInit);
+orderRoute.route("/cartCheckout").post(orderController.cartCheckout);
+
 
 module.exports = { orderRoute };

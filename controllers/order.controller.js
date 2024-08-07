@@ -3,6 +3,7 @@ const User = require("../models/users");
 const Order = require("../models/orders");
 const Cart = require("../models/cart");
 const OrderedProducts = require("../models/orderedProducts");
+const OrderDetails = require("../models/orderDetails")
 // --------------------- Order Collection ---------------------------------------
 const fetchAll = async (req, res, next) => {
   // try {
@@ -433,11 +434,11 @@ const fetch_orderedProducts = async (req, res, next) => {
 };
 const fetch_orderId = (req, res, next) => {
   const { email } = req.body;
-  OrderedProducts.find({ email, order: "inProgress" })
+  OrderDetails.find({ order: "inProgress" })
     .limit(1)
-    .then((order) => {
+    .then((orderDetails) => {
       // console.log("order >> is >>", order);
-      return res.send({ order });
+      return res.send({ orderDetails });
     })
     .catch((err) => res.send({ err }));
 };
@@ -454,6 +455,40 @@ const addProductToOrderedProducts = (req, res, next) => {
     .catch((err) => res.send({ err }));
 };
 
+// ----------- Order Init (when a single product is added to new/empty cart) ----------
+const orderInit = (req, res, next) => {
+  const { email, orderId} = req.body;
+  OrderDetails.create({
+    email: email,
+    createdAt: new Date(),
+    orderId: orderId,
+    checkoutAt: null,
+    order:"inProgress"
+  })
+  .then(response=>{
+    res.send({response})
+  })
+  .catch((err) => res.send({ err }));
+}
+
+// ----------- Order Checkout (while Checking-out) ----------
+const cartCheckout = (req, res, next) => {
+  const { email, orderId} = req.body;
+
+  // -------- Update
+  OrderedProducts.updateMany({ email, orderId }, {$set: {order:"completed"}})
+  .then(response=>{
+    res.send({response, message: response.message});
+  })
+  .catch(err=>res.send({err}));
+
+  OrderDetails.findOneAndUpdate({ email, orderId }, {$set: { checkoutAt: new Date(), order:"completed" }})
+  .then(response=>{
+    res.send({response});
+  })
+  .catch(err=>res.send({err}));
+
+}
 
 module.exports = {
   fetchAll,
@@ -465,4 +500,6 @@ module.exports = {
   addProductToOrderedProducts,
   fetch_orderedProducts,
   fetch_orderId,
+  orderInit,
+  cartCheckout
 };
