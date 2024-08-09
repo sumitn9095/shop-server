@@ -7,6 +7,7 @@ const path = require('path');
 const { orderRoute } = require('./routes/order.route');
 const { productRoute } = require('./routes/product.route')
 const { userRoute } = require('./routes/user.route')
+const { cartRoute } = require('./routes/cart.route');
 const {get500} = require('./controllers/error.controller');
 const { eventNames } = require('./models/users');
 
@@ -37,6 +38,7 @@ app.use(express.json());
 app.use("/api",orderRoute);
 app.use("/api",productRoute);
 app.use("/api",userRoute);
+app.use("/api",cartRoute);
 app.use("/500",get500);
 
 // app.use((error,req,res,next)=>{
