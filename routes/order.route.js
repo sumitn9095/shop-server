@@ -8,11 +8,6 @@ orderRoute.route("/fetchOrders").get(orderController.fetchOrders);
 orderRoute.route("/fetchArtOrders").get(orderController.fetchArtOrders);
 orderRoute.route("/fetchUsers").get(orderController.fetchUsers);
 
-//--------- Cart Collection ---------------
-orderRoute
-  .route("/fetch_cartUserOrders")
-  .post(orderController.fetch_cartUserOrders);
-orderRoute.route("/addProductToOrder").post(orderController.addProductToOrder);
 
 //--------- OrderedProducts Collection ----
 orderRoute
@@ -24,6 +19,6 @@ orderRoute
 orderRoute.route("/fetch_orderId").post(orderController.fetch_orderId);
 orderRoute.route("/orderInit").post(orderController.orderInit);
 orderRoute.route("/cartCheckout").post(orderController.cartCheckout);
-
+orderRoute.route("/cartHistory").post(orderController.cartHistory);
 
 module.exports = { orderRoute };

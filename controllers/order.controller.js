@@ -3,7 +3,10 @@ const User = require("../models/users");
 const Order = require("../models/orders");
 const Cart = require("../models/cart");
 const OrderedProducts = require("../models/orderedProducts");
-const OrderDetails = require("../models/orderDetails")
+const OrderDetails = require("../models/orderDetails");
+const orderHistory = require("../models/orderHistory");
+
+
 // --------------------- Order Collection ---------------------------------------
 const fetchAll = async (req, res, next) => {
   // try {
@@ -211,135 +214,28 @@ const fetchUsers = (req, res, next) => {
     });
 };
 
-// ---------------------- Cart Collection ----------------------------------------
-const fetch_cartUserOrders = async (req, res, next) => {
-  // try {
-  const { email } = req.body;
-  console.log("email", email);
-  User.aggregate([
-    {
-      $match: { email: email },
-    },
-    {
-      $lookup: {
-        from: "cart",
-        let: { email: "$email" },
-        pipeline: [
-          {
-            $match: {
-              $expr: { $eq: ["$email", "$$email"] },
-            },
-          },
-          {
-            $unwind: { path: "$products" },
-          },
-          {
-            $lookup: {
-              from: "products",
-              let: { prod: "$products.id" },
-              //let: {artid: "$art.aid"},
-              pipeline: [
-                {
-                  $match: {
-                    $expr: { $eq: ["$id", "$$prod"] },
-                  },
-                },
-                {
-                  $project: {
-                    _id: 0,
-                    id: 1,
-                    name: 1,
-                    category: 1,
-                    inStock: 1,
-                    price: 1,
-                    ed: 1,
-                    md: 1,
-                  },
-                },
-              ],
-              as: "products",
-            },
-          },
-
-          // ---- Unwind : create Each Document for Each array index -------
-          //{ $unwind : "$products" },
-
-          {
-            $project: {
-              email: 1,
-              products: 1,
-              products: 1,
-            },
-          },
-        ],
-        as: "cart",
-      },
-    },
-    {
-      $project: {
-        _id: 0,
-        name: 1,
-        email: 1,
-        cart: 1,
-      },
-    },
-  ])
-    // res.json(result[0] || {})
-    // } catch (error) {
-
-    // }
-    .then((resp) => {
-      res.send({ resp });
-    })
-    .catch((err) => {
-      //----throw err;
-      //res.json({error: error.message});
-      const error = new Error(err);
-      error.httpStatusCode = 500;
-      return next(error);
-    });
-};
-const addProductToOrder = (req, res, next) => {
-  const { email, productId } = req.body;
-  Cart.findOneAndUpdate(
-    { email: email },
-    { $push: { products: { id: productId } } },
-    { new: true, upsert: true }
-  )
-    .then((products) => {
-      res.send({ products });
-    })
-    .catch((err) => res.send({ err }));
-};
-
-
-const filter_orderedProducts = (req, res, next) => {
-  const {email, orderId} = req.body;
-
-}
-
 
 // ---------------------- OrderedProducts Collection ----------------------------------------
 const fetch_orderedProducts = async (req, res, next) => {
   const { email, orderId } = req.body;
   const { name, category, instock, priceFrom, priceTo, date } = req.body.payload;
   //console.log("req.body.payload", req.body.payload);
-    // ---------- Query building --- started ----------------------
-    var matchQueryArr = [{$eq: ["$id", "$$productId"]}];
-    if(req.body.payload !== false) {
-       // - category
-      if((category !== 'All') && category.length != 0) matchQueryArr.push({$eq: ["$category", category]});
-      // - instock
-      if(instock.length != 0) matchQueryArr.push({$eq: ["$instock", instock]});
-      // - Date
-      if((date && date[0]) || date !== undefined) {
-        matchQueryArr.push({$gte: ["$md",new Date(date[0])]});
-        matchQueryArr.push({$lt: ["$ed",new Date(date[1])]});
-      }
-      // - Price
-      if(priceTo !== 0) matchQueryArr.push({ $and:[ {$gte: ["$price", priceFrom]}, {$lt: ["$price", priceTo]} ] });
+  // ---------- Query building --- started ----------------------
+  var matchQueryArr = [{ $eq: ["$id", "$$productId"] }];
+  if (req.body.payload !== false) {
+    // - category
+    if ((category !== 'All') && category.length != 0) matchQueryArr.push({ $eq: ["$category", category] });
+    // - instock
+    if (instock.length != 0) matchQueryArr.push({ $eq: ["$instock", instock] });
+    // - Date
+    if ((date && date[0]) || date !== undefined) {
+      matchQueryArr.push({ $gte: ["$md", new Date(date[0])] });
+      matchQueryArr.push({ $lt: ["$ed", new Date(date[1])] });
     }
-    // ---------- Query building --- end -------------------------
+    // - Price
+    if (priceTo !== 0) matchQueryArr.push({ $and: [{ $gte: ["$price", priceFrom] }, { $lt: ["$price", priceTo] }] });
+  }
+  // ---------- Query building --- end -------------------------
 
   User.aggregate([
     {
@@ -353,7 +249,7 @@ const fetch_orderedProducts = async (req, res, next) => {
         pipeline: [
           {
             $match: {
-              $and:[ {email:{$eq:email}}, {orderId:{$eq:orderId}} ]
+              $and: [{ email: { $eq: email } }, { orderId: { $eq: orderId } }]
               // $expr: { 
               //   //$eq: ["$email", "$$email"]
               //   $and:[ {$eq: ["$email", "$$email"]}, {$eq: ["$orderId", orderId]} ],
@@ -367,7 +263,7 @@ const fetch_orderedProducts = async (req, res, next) => {
               let: { productId: "$id" },
               //let: {artid: "$art.aid"},
               pipeline: [
-                
+
                 {
                   $match: {
                     //$and: [ {eq:{id: "$productId"}},{eq:{category: category}} ]
@@ -378,7 +274,7 @@ const fetch_orderedProducts = async (req, res, next) => {
                     },
                   },
                 },
-                
+
                 // {
                 //   $project: {
                 //     _id: 0,
@@ -424,7 +320,7 @@ const fetch_orderedProducts = async (req, res, next) => {
     },
   ])
     .then((order) => {
-      res.send({ order: order[0] , matchQueryArr});
+      res.send({ order: order[0], matchQueryArr });
     })
     .catch((err) => {
       const error = new Error(err);
@@ -446,7 +342,7 @@ const addProductToOrderedProducts = (req, res, next) => {
   const { email, orderId, id, qty, order } = req.body;
   OrderedProducts.findOneAndUpdate(
     { email: email, orderId: orderId, id: id },
-    { $set: { email, id, qty, order:"inProgress" } },
+    { $set: { email, id, qty, order: "inProgress" } },
     { new: true, upsert: true }
   )
     .then((products) => {
@@ -454,52 +350,220 @@ const addProductToOrderedProducts = (req, res, next) => {
     })
     .catch((err) => res.send({ err }));
 };
-
 // ----------- Order Init (when a single product is added to new/empty cart) ----------
 const orderInit = (req, res, next) => {
-  const { email, orderId} = req.body;
+  const { email, orderId } = req.body;
   OrderDetails.create({
     email: email,
     createdAt: new Date(),
     orderId: orderId,
     checkoutAt: null,
-    order:"inProgress"
+    order: "inProgress"
   })
-  .then(response=>{
-    res.send({response})
-  })
-  .catch((err) => res.send({ err }));
+    .then(response => {
+      res.send({ response })
+    })
+    .catch((err) => res.send({ err }));
 }
-
 // ----------- Order Checkout (while Checking-out) ----------
 const cartCheckout = (req, res, next) => {
-  const { email, orderId} = req.body;
+  const { email, orderId } = req.body;
 
-  // -------- Update
-  OrderedProducts.updateMany({ email, orderId }, {$set: {order:"completed"}})
-  .then(response=>{
-    res.send({response, message: response.message});
-  })
-  .catch(err=>res.send({err}));
+  // ------- Add  'order' as completed to 'OrderedProducts'
+  OrderedProducts.updateMany({ email, orderId }, { $set: { order: "completed" } })
+    .then(response => {
+      res.send({ response });
 
-  OrderDetails.findOneAndUpdate({ email, orderId }, {$set: { checkoutAt: new Date(), order:"completed" }})
-  .then(response=>{
-    res.send({response});
-  })
-  .catch(err=>res.send({err}));
+      // --------- Add 'checkoutAt' date & 'order' as completed ---- to Order details ----
+      OrderDetails.findOneAndUpdate({ email, orderId }, { $set: { checkoutAt: new Date(), order: "completed" } })
+        .then(response2 => {
 
+
+          // ------------- Write a user's previous transaction as Cart History to "Cart History" collection.v
+          // User.aggregate([
+          //   {
+          //     $match: { email: email }
+          //   },
+          //   {
+          //     $lookup: {
+          //       from: 'orderDetails',
+          //       localField: 'email',
+          //       foreignField: 'email',
+          //       pipeline: [
+          //         {
+          //           $match: { order: "completed" }
+          //         },
+          //         {
+          //           $lookup: {
+          //             from: 'orderedProducts',
+          //             localField: 'orderId',
+          //             foreignField: 'orderId',
+          //             pipeline: [
+          //               {
+          //                 $lookup: {
+          //                   from: 'products',
+          //                   localField: 'id',
+          //                   foreignField: 'id',
+          //                   as: 'product'
+          //                 }
+          //               },
+          //               {
+          //                 $group: {
+          //                   _id: "$orderId", orderedProductList: {
+          //                     $push: {
+          //                       qty: "$qty", product: { $first: "$product" }
+          //                     }
+          //                   }
+          //                 }
+          //               },
+          //               {
+          //                 $project: {
+          //                   _id: 0
+          //                 }
+          //               }
+          //             ],
+          //             as: 'orderIn'
+          //           },
+
+          //         },
+          //         {
+          //           $group: {
+          //             _id: "$orderId", orderDetails: {
+          //               $push: {
+          //                 createdAt: "$createdAt", checkoutAt: "$checkoutAt", orderStatus: "$order", orderIn: { $first: "$orderIn" }
+          //               }
+          //             }
+          //           }
+          //         },
+
+          //         // { 
+          //         //   $group :{ _id :"$orderId", orderDetails : {$push: {
+          //         //       createdAt:"$createdAt",
+          //         //       checkoutAt:"$checkoutAt"
+          //         //   }}}
+          //         // },
+          //         {
+          //           $project: {
+          //             _id: 1,
+          //             orderDetails: { $first: "$orderDetails" }
+          //           }
+          //         }
+          //       ],
+          //       as: 'orderList'
+          //     }
+          //   },
+          //   {
+          //     $project: {
+          //       _id: 0,
+          //       name: 1,
+          //       email: 1,
+          //       orderList: 1
+          //     }
+          //   }
+          // ])
+          //   .then(response => res.send({ response: response[0] }))
+          //   .catch(err => res.send({ err }))
+
+          return res.send({ response2 });
+
+
+        })
+        .catch(err => res.send({ err }));
+    })
+    .catch(err => res.send({ err }));
 }
+
+const cartHistory = (req, res, next) => {
+  // ------------- Fetch previous transaction as Cart History ------------------
+  User.aggregate([
+    {
+      $match: { email: email }
+    },
+    {
+      $lookup: {
+        from: 'orderDetails',
+        localField: 'email',
+        foreignField: 'email',
+        pipeline: [
+          {
+            $match: { order: "completed" }
+          },
+          {
+            $lookup: {
+              from: 'orderedProducts',
+              localField: 'orderId',
+              foreignField: 'orderId',
+              pipeline: [
+                {
+                  $lookup: {
+                    from: 'products',
+                    localField: 'id',
+                    foreignField: 'id',
+                    as: 'product'
+                  }
+                },
+                {
+                  $group: {
+                    _id: "$orderId", orderedProductList: {
+                      $push: {
+                        qty: "$qty", product: { $first: "$product" }
+                      }
+                    }
+                  }
+                },
+                {
+                  $project: {
+                    _id: 0
+                  }
+                }
+              ],
+              as: 'orderIn'
+            },
+
+          },
+          {
+            $group: {
+              _id: "$orderId", orderDetails: {
+                $push: {
+                  createdAt: "$createdAt", checkoutAt: "$checkoutAt", orderStatus: "$order", orderIn: { $first: "$orderIn" }
+                }
+              }
+            }
+          },
+          {
+            $project: {
+              _id: 1,
+              orderDetails: { $first: "$orderDetails" }
+            }
+          }
+        ],
+        as: 'orderList'
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        name: 1,
+        email: 1,
+        orderList: 1
+      }
+    }
+  ])
+    .then(response => res.send({ response: response[0] }))
+    .catch(err => res.send({ err }))
+}
+
+
 
 module.exports = {
   fetchAll,
   fetchOrders,
   fetchArtOrders,
   fetchUsers,
-  fetch_cartUserOrders,
-  addProductToOrder,
   addProductToOrderedProducts,
   fetch_orderedProducts,
   fetch_orderId,
   orderInit,
-  cartCheckout
+  cartCheckout,
+  cartHistory
 };
