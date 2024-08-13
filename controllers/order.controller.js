@@ -474,6 +474,7 @@ const cartCheckout = (req, res, next) => {
 }
 
 const cartHistory = (req, res, next) => {
+  const { email } = req.body;
   // ------------- Fetch previous transaction as Cart History ------------------
   User.aggregate([
     {
