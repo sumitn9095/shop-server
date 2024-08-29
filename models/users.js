@@ -27,7 +27,10 @@ let User = new Schema(
     details: {
       type: Object,
       required: [true, "User details not provided"]
-    }
+    },
+    admin: {
+      type: Boolean
+    },
   },
   {
     collection: "users",

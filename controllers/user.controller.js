@@ -72,6 +72,7 @@ const signin = async (req, res, next) => {
   var { email, password } = req.body;
   User.findOne({ email: email })
     .then((user) => {
+
       if (!user)
         return res
           .status(404)
@@ -85,15 +86,28 @@ const signin = async (req, res, next) => {
         expiresIn: process.env.JWTEXP,
       });
       //let orderId = bcrypt.hashSync(password, 3);
-      res.status(200).json({
+      //setTimeout(() => {
+      ///if (user) {
+
+      // console.log("user1--------", userCopy)
+      // console.log("user--------", userCopy?.isOwner)
+      // console.log("user--------", userCopy?.name, userCopy?.isOwner, userCopy?._id, userCopy?.email)
+      // console.log("user2--------", userCopy)
+      // console.log("user--------", typeof user?.isOwner === 'string' && user?.isOwner === 'true' ? 'true' : 'false');
+      let userObj = {
         user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
+          admin: user?.admin,
+          id: user?._id,
+          name: user?.name,
+          email: user?.email
         },
         message: "Login susscessful",
         token: token,
-      });
+      }
+      res.status(200).json({ ...userObj });
+
+      //}
+      //}, 400);
     })
     .catch((err) => {
       return res
