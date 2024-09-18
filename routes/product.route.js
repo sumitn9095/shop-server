@@ -3,6 +3,7 @@ const app = express();
 const productRoute = express.Router();
 const productController = require("../controllers/product.controller");
 const uploadProdImg = require("../middlewares/uploadProductPhotos");
+const uploadProdExcel = require("../middlewares/uploadProductExcel")
 
 app.use(function (req, res, next) {
     res.header(
@@ -20,8 +21,11 @@ productRoute.route("/getMaxProductPrice").get(productController.getMaxProductPri
 productRoute.route("/addNewProduct").post(uploadProdImg.any("img"), productController.addNewProduct);
 productRoute.route("/editProduct").post(uploadProdImg.any("img"), productController.editProduct);
 productRoute.route("/downloadPDF").get(productController.downloadPDF);
-productRoute.route("/downloadProductExcel").get(productController.downloadProductExcel);
+productRoute.route("/downloadProductExcel").post(productController.downloadProductExcel);
+productRoute.route("/uploadProductExcel").post(uploadProdExcel.single("productexcel"), productController.uploadProductExcel);
+
 productRoute.route("/removeProductImg").post(productController.removeProductImg);
 productRoute.route("/removeProduct/:id").delete(productController.removeProduct);
+productRoute.route("/fetchProduct/:id").get(productController.fetchProduct);
 
 module.exports = { productRoute }

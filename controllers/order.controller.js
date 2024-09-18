@@ -320,7 +320,7 @@ const fetch_orderedProducts = async (req, res, next) => {
     },
   ])
     .then((order) => {
-      res.send({ order: order[0], matchQueryArr });
+      return res.send({ order: order[0], matchQueryArr });
     })
     .catch((err) => {
       const error = new Error(err);
@@ -472,7 +472,6 @@ const cartCheckout = (req, res, next) => {
     .catch(err => res.send({ err }));
 
 }
-
 const cartHistory = (req, res, next) => {
   const { email } = req.body;
   // ------------- Fetch previous transaction as Cart History ------------------
@@ -553,7 +552,6 @@ const cartHistory = (req, res, next) => {
     .then(response => res.send({ response: response[0] }))
     .catch(err => res.send({ err }))
 }
-
 module.exports = {
   fetchAll,
   fetchOrders,

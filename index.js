@@ -33,6 +33,7 @@ app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "public/images")));
+app.use(express.static(path.join(__dirname, "public/xlsx")));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 

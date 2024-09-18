@@ -4,13 +4,20 @@ const puppeteer = require('puppeteer');
 const excel = require("exceljs");
 const XLSX = require("xlsx");
 const fs = require("fs");
+const moment = require("moment");
 
 
-
-const fetchAllProducts = (req, res, next) => {
+const fetchAllProducts = async (req, res, next) => {
     Product.find()
         .then(products => res.send({ products }))
         .catch(err => res.send({ err }))
+}
+
+const fetchProduct = (req, res, next) => {
+    const { id } = req.params;
+    Product.findOne({ id: id })
+        .then(product => res.send(product))
+        .catch(err => res.send(err))
 }
 
 const fetchP = (req, res, next) => {
@@ -19,9 +26,32 @@ const fetchP = (req, res, next) => {
         .catch(err => res.send({ err }))
 }
 
-const filterProducts = (req, res, next) => {
-    const { name, category, instock, priceFrom, priceTo, orderId, date } = req.body;
-    console.log("req.body", req.body);
+const countDocs = async (email) => {
+    return Product.countDocuments(email)
+        // return OrderedProducts.aggregate([
+        //     {
+        //         $match: { email: email }
+        //     },
+        //     {
+        //         $lookup: {
+        //             from: 'products',
+        //             localField: 'id',
+        //             foreignField: 'id',
+        //             as: "ww",
+        //             pipeline: [
+        //                 { $group: { _id: null, myCount: { $sum: 1 } } },
+        //                 { $project: { _id: 0 } }
+        //             ]
+        //         }
+        //     }
+        // ])
+        .then(count => count)
+        .catch(err => err)
+}
+
+const processfilterProducts = (payload) => {
+    const { name, category, instock, priceFrom, priceTo, orderId, date } = payload;
+    //console.log("req.body", req.body);
 
 
     // ---------- building Query ---- start -----------
@@ -31,17 +61,14 @@ const filterProducts = (req, res, next) => {
             $text: { $search: `\"${name}\"` }
         };
     }
-    if (category && category !== 'All') matchQuery.category = category;
-    matchQuery.price = { $gte: priceFrom, $lt: priceTo };
-    if (date && date[0]) {
+    if ((category !== 'All') && category.length != 0) matchQuery.category = category;
+    if ((priceFrom !== undefined && priceFrom !== 0) || (priceTo !== undefined && priceTo !== 0)) matchQuery.price = { $gte: priceFrom, $lt: priceTo };
+    if (date !== undefined && date.length !== 0 || (date && date[0])) {
         matchQuery.md = { $gte: new Date(date[0]) };
         matchQuery.ed = { $lt: new Date(date[1]) };
     }
-    if (!instock) {
-        matchQuery.instock = false;
-    } else {
-        matchQuery.instock = true;
-    }
+    if (instock !== undefined && typeof instock !== 'object') matchQuery.instock = instock;
+    //else matchQuery.instock = true;
     // ---------- building Query ---- end -----------
 
 
@@ -59,7 +86,7 @@ const filterProducts = (req, res, next) => {
     //Product.createIndex( { name: "text" } )
     //  Product.createIndexes( { name: "text" } )
 
-    Product.aggregate([
+    return Product.aggregate([
 
         // $match: { 
         //     $expr: {
@@ -90,31 +117,31 @@ const filterProducts = (req, res, next) => {
                 // ],
 
                 //name: name !== undefined ? name : "all"
-
-
-
                 matchQuery
-
-
-
         }
 
     ])
-        .then(products => {
-            return res.send({ products })
-            console.log("products.length", products.length)
-            // if(products.length === 0) {
-            //     fetchAllProducts().then(allProducts => {
-            //         return res.send({products:allProducts})
-            //     })
-            // }
-            // return res.send({products:allProducts});
-        })
+}
+
+const filterProducts = (req, res, next) => {
+    processfilterProducts(req.body).then(products => {
+        return res.send({ products })
+        //return products
+        console.log("products.length", products.length)
+        // if(products.length === 0) {
+        //     fetchAllProducts().then(allProducts => {
+        //         return res.send({products:allProducts})
+        //     })
+        // }
+        // return res.send({products:allProducts});
+    })
         .catch(err => {
             console.log(err)
             return res.send({ err })
         })
 }
+
+
 
 const getCategories = (req, res, next) => {
     Product.distinct("category")
@@ -192,12 +219,14 @@ const removeProductImg = (req, res, next) => {
         .catch(err => res.send({ err }))
 }
 
-
-const addNewProduct = (req, res, next) => {
+const addNewProduct = async (req, res, next) => {
     const data_body = JSON.parse(JSON.stringify(req.body));
     let incnum = Math.random() * 7888888;
     let incnum2 = Math.floor(incnum)
-    const { name, category, md, ed, price, instock } = data_body;
+    const { email, name, category, md, ed, price, instock } = data_body;
+    console.log("data_body---", data_body)
+    let countDoc = await countDocs(email);
+    console.log("countDoc", countDoc);
     Product.create({ id: incnum2, name, category, md, ed, price, instock })
         .then(product => res.send({ product }))
         .catch(err => res.send({ err }))
@@ -226,10 +255,16 @@ async function downloadPDF(req, res, next) {
 
 downloadProductExcel = async (req, res, next) => {
     const { email, category, query } = req.body;
+
     try {
+        // countDocs(email).then(countDoc => console.log("countDoc", countDoc))
+
         var taskList = [];
 
-        taskList = await fetchP();
+        //taskList = await fetchP();
+        taskList = await processfilterProducts(req.body);
+
+        if (!taskList.length) return res.status(500).send({ error: true, message: 'No products match filter' })
 
         let workbook = new excel.Workbook();
         let worksheet = workbook.addWorksheet("data", {
@@ -245,7 +280,7 @@ downloadProductExcel = async (req, res, next) => {
             return { header: column, key: column, width: 30 };
         });
 
-        console.log("worksheet.columns", worksheet.columns);
+        //------//------- console.log("worksheet.columns", worksheet.columns);
 
         worksheet.addRows(taskList);
 
@@ -278,29 +313,20 @@ downloadProductExcel = async (req, res, next) => {
     }
 }
 
-uploadExcel = async (req, res, next) => {
+uploadProductExcel = async (req, res, next) => {
+    const { email, admin, replace } = req.body;
     try {
-        // countDocumentsInCollection(req.body.email)
-        // .then((r) => {
-        //   console.log("countDoc",r);
-        // }).catch((err) => {
-        //   console.log("err",err);
-        // })
-
+        if (!admin) return res.status(500).send({ message: "Only Admin can Upload Produts", error: true });
         let countDoc = 0;
-        let remainingDocsToInsert = 0;
+        if (replace !== 'replace') {
+            let remainingDocsToInsert = 0;
+            countDoc = await countDocs(email);
+        }
 
-        countDoc = await Task.countDocuments({ email: req.body.email });
+        //console.log("countDoc", countDoc);
 
-        //console.log("countDoc",countDoc);
-
-        //countDocs.then((results) => {
-        const WasteRiskDetailPendingUpdatesModel = Task;
         let fileName = req.file.filename;
-        //  console.log("Excel file",fileName);
-        // let simulationID = fileName.split("upload_")[1];
-        // simulationID = simulationID.replace(".xlsx", "");
-        // console.log("Excel file",fileName);
+
         let workbook = XLSX.readFile(`./public/xlsx/${fileName}`);
         let sheetNames = workbook.SheetNames;
 
@@ -321,46 +347,67 @@ uploadExcel = async (req, res, next) => {
         }
 
         data.data.map(s => {
-            let isOverBoolean = (/true/).test(s.isOver);
-            s.isOver = isOverBoolean;
-            s.priority = Number(s.priority);
-            s.subTasks = JSON.parse(s.subTasks);
-            s.category = JSON.parse(s.category);
-            s.email = req.body.email;
+            console.log("excel data", s);
+            if (s.md) {
+                let tt = moment(s?.md).format("YYYY-MM-DD");
+                s.md = tt
+            }
+            if (s.ed) {
+                let tt = moment(s?.ed).format("YYYY-MM-DD");
+                s.ed = tt
+            }
+            let incnum = Math.random() * 7888888;
+            s.id = incnum;
+
+            // s.md = moment(s?.md).format("YYYY-MM-DD");
+            // s.ed = moment(s?.ed).format("YYYY-MM-DD");
+            // let isOverBoolean = (/true/).test(s.isOver);
+            // s.isOver = isOverBoolean;
+            // s.priority = Number(s.priority);
+            // s.subTasks = JSON.parse(s.subTasks);
+            // s.category = JSON.parse(s.category);
+            // s.email = req.body.email;
+
+            if (s.__v) delete s.__v;
+            if (s.instock === undefined || s.instock === '' || !s.instock) s.instock = false;
         });
 
-        //console.log("data.data --- UPLOADED DATA",data.data);
 
-        remainingDocsToInsert = 10 - countDoc;
+        //console.log("data.data", data.data);
+        console.log("data.data --- UPLOADED DATA", data.data, replace);
 
-        if (remainingDocsToInsert <= 0) res.status(500).send({ message: 'You have run out of Tasks' });
+        if (replace !== 'replace') remainingDocsToInsert = 10 - countDoc;
         else {
+            remainingDocsToInsert = 10;
+            Product.deleteMany({})
+                .then(products => {
+                    console.log("delete many", products)
+                })
+        }
 
-            let insertManyReq = Task.insertMany(data.data, { limit: remainingDocsToInsert });
-
+        if (remainingDocsToInsert <= 0) res.status(500).send({ message: 'Showroom Products are already full.' });
+        else {
+            let insertManyReq = Product.insertMany(data.data, { limit: remainingDocsToInsert });
             insertManyReq.then((response) => {
-                res.status(200).send({ message: "Upload request initiated successfully" });
+                res.status(200).send({ message: "Upload request initiated successfully", data: data.data });
             }).catch((error) => {
                 res.status(500).send({ message: error });
             });
-
             //console.log("insertMany",jhk)
-
             fs.unlink(`public/xlsx/${fileName}`, function (err) {
                 if (err) throw err;
                 // if no error, file has been deleted successfully
                 //console.log("File deleted!");
             });
         }
-
     } catch (err) {
         if (req.fileValidationError) {
             res.status(500).send({ message: req.fileValidationError });
         } else {
             // console.log("Error /uploadTasks ", err);
-            res.status(500).send({ message: err });
+            res.status(500).send({ err, message: 'ssome error', error: true, });
         }
     }
 }
 
-module.exports = { fetchAllProducts, filterProducts, getCategories, exp, getMaxProductPrice, addNewProduct, removeProduct, editProduct, removeProductImg, downloadPDF, downloadProductExcel, uploadExcel };
+module.exports = { fetchAllProducts, fetchProduct, filterProducts, getCategories, exp, getMaxProductPrice, addNewProduct, removeProduct, editProduct, removeProductImg, downloadPDF, downloadProductExcel, uploadProductExcel };
