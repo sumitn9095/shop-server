@@ -40,7 +40,7 @@ const fetch_cartUserOrders = async (req, res, next) => {
                     id: 1,
                     name: 1,
                     category: 1,
-                    inStock: 1,
+                    instock: 1,
                     price: 1,
                     ed: 1,
                     md: 1,
@@ -103,52 +103,52 @@ const addProductToOrder = (req, res, next) => {
 };
 
 const cartItems = (req, res, next) => {
-    const { email } = req.body;
-    Cart.aggregate([
-        {
-            $match: { email: email}
-        },
-        {
-            $unwind: { path: "$products"}
-        }
-    ])
-    .then(response=>res.send({response}))
-    .catch(err=>res.send({err}))
+  const { email } = req.body;
+  Cart.aggregate([
+    {
+      $match: { email: email }
+    },
+    {
+      $unwind: { path: "$products" }
+    }
+  ])
+    .then(response => res.send({ response }))
+    .catch(err => res.send({ err }))
 }
-const updateQuantity = (req,res,next) => {
-    const { email, productId, quantity } = req.body;
-    Cart.findOneAndUpdate({ email, "products.id" : productId }, {$inc: {"products.$.quantity": quantity}})
-    .then(response=>res.send({response}))
-    .catch(err=>res.send({err}))
+const updateQuantity = (req, res, next) => {
+  const { email, productId, quantity } = req.body;
+  Cart.findOneAndUpdate({ email, "products.id": productId }, { $inc: { "products.$.quantity": quantity } })
+    .then(response => res.send({ response }))
+    .catch(err => res.send({ err }))
 }
 
-const countProductsMoreThanOnce = (req,res,next) => {
-    const { email } = req.body;
-    User.aggregate([
-        {
-            $match: {email: email}
-        },
-        {
-            $lookup: {
-                from: "cart",
-                localField: "email",
-                foreignField: "email",
-                pipeline:[
-                    {
-                        $match:{
-                            $expr: { $gt: ["products.$.quantity", 2]}
-                        }
-                    },
-                    {
-                        $count: "more than the same product"
-                    }
-                ],
-                as: "eeeeff"
+const countProductsMoreThanOnce = (req, res, next) => {
+  const { email } = req.body;
+  User.aggregate([
+    {
+      $match: { email: email }
+    },
+    {
+      $lookup: {
+        from: "cart",
+        localField: "email",
+        foreignField: "email",
+        pipeline: [
+          {
+            $match: {
+              $expr: { $gt: ["products.$.quantity", 2] }
             }
-        }
-    ])
-    .then(response=>res.send({response}))
-    .catch(err=>res.send({err}))
+          },
+          {
+            $count: "more than the same product"
+          }
+        ],
+        as: "eeeeff"
+      }
+    }
+  ])
+    .then(response => res.send({ response }))
+    .catch(err => res.send({ err }))
 }
 
-module.exports = {fetch_cartUserOrders, addProductToOrder, cartItems, updateQuantity, countProductsMoreThanOnce};
+module.exports = { fetch_cartUserOrders, addProductToOrder, cartItems, updateQuantity, countProductsMoreThanOnce };

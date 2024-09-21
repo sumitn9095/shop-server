@@ -11,9 +11,10 @@ const { cartRoute } = require('./routes/cart.route');
 const { get500 } = require('./controllers/error.controller');
 const { eventNames } = require('./models/users');
 
+const swaggerUI = require('swagger-ui-express');
+const swaggerSpec = require('./swagger');
 
 const app = express();
-
 
 mongoose.Promise = global.Promise;
 
@@ -36,6 +37,13 @@ app.use(express.static(path.join(__dirname, "public/images")));
 app.use(express.static(path.join(__dirname, "public/xlsx")));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+// Serve Swagger documentation
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
+
+app.get('/api/resource/:id', (req, res) => {
+  // Your route logic goes here
+});
 
 app.use("/api", orderRoute);
 app.use("/api", productRoute);

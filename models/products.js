@@ -14,7 +14,7 @@ let Product = new Schema(
         category: {
             type: String,
         },
-        inStock: {
+        instock: {
             type: Boolean,
         },
         price: {
@@ -34,7 +34,6 @@ let Product = new Schema(
         collection: "products",
     }
 );
-
 Product.index({ name: 'text', 'name': 'text' });
 // Product.index({ 'id': 1 }, { unique: true });
 

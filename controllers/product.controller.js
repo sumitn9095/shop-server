@@ -191,12 +191,12 @@ const editProduct = (req, res, next) => {
     let flArr = [];
     let updatePayload = {}
     if (req.files.length) {
-        req.files.map(fl => {
-            flArr.push(fl.filename);
+        req.files.map((fl, i) => {
+            if (i < 3) flArr.push(fl.filename);
         })
-        updatePayload = { name, category, md, ed, price, instock, imagePath: flArr }
+        updatePayload = { name, category, md, ed, price, instock: instock === 'true' ? true : false, imagePath: flArr }
     } else {
-        updatePayload = { name, category, md, ed, price, instock }
+        updatePayload = { name, category, md, ed, price, instock: instock === 'true' ? true : false }
     }
     Product.findOneAndUpdate({ id }, { $set: { ...updatePayload } })
         .then(product => res.send({ product }))
@@ -227,9 +227,13 @@ const addNewProduct = async (req, res, next) => {
     console.log("data_body---", data_body)
     let countDoc = await countDocs(email);
     console.log("countDoc", countDoc);
-    Product.create({ id: incnum2, name, category, md, ed, price, instock })
-        .then(product => res.send({ product }))
-        .catch(err => res.send({ err }))
+    if (countDoc < 10) {
+        Product.create({ id: incnum2, name, category, md, ed, price, instock: instock === 'true' ? true : false })
+            .then(product => res.send({ product }))
+            .catch(err => res.send({ err }))
+    } else {
+        return res.status(500).send({ err })
+    }
 }
 
 async function downloadPDF(req, res, next) {
@@ -357,7 +361,7 @@ uploadProductExcel = async (req, res, next) => {
                 s.ed = tt
             }
             let incnum = Math.random() * 7888888;
-            s.id = incnum;
+            s.id = Math.floor(incnum)
 
             // s.md = moment(s?.md).format("YYYY-MM-DD");
             // s.ed = moment(s?.ed).format("YYYY-MM-DD");
@@ -384,7 +388,6 @@ uploadProductExcel = async (req, res, next) => {
                     console.log("delete many", products)
                 })
         }
-
         if (remainingDocsToInsert <= 0) res.status(500).send({ message: 'Showroom Products are already full.' });
         else {
             let insertManyReq = Product.insertMany(data.data, { limit: remainingDocsToInsert });

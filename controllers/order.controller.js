@@ -43,7 +43,7 @@ const fetchAll = async (req, res, next) => {
                   $project: {
                     name: 1,
                     category: 1,
-                    inStock: 1,
+                    instock: 1,
                     price: 1,
                   },
                 },
@@ -281,7 +281,7 @@ const fetch_orderedProducts = async (req, res, next) => {
                 //     id: 1,
                 //     name: 1,
                 //     category: 1,
-                //     inStock: 1,
+                //     instock: 1,
                 //     price: 1,
                 //     ed: 1,
                 //     md: 1,
@@ -339,15 +339,13 @@ const fetch_orderId = (req, res, next) => {
     .catch((err) => res.send({ err }));
 };
 const addProductToOrderedProducts = (req, res, next) => {
-  const { email, orderId, id, qty, order } = req.body;
+  const { email, orderId, id, qty } = req.body;
   OrderedProducts.findOneAndUpdate(
-    { email: email, orderId: orderId, id: id },
+    { email, orderId, id },
     { $set: { email, id, qty, order: "inProgress" } },
     { new: true, upsert: true }
   )
-    .then((products) => {
-      res.send({ products });
-    })
+    .then((products) => res.send({ products }))
     .catch((err) => res.send({ err }));
 };
 // ----------- Order Init (when a single product is added to new/empty cart) ----------
@@ -368,109 +366,13 @@ const orderInit = (req, res, next) => {
 // ----------- Order Checkout (while Checking-out) ----------
 const cartCheckout = (req, res, next) => {
   const { email, orderId } = req.body;
-
-
-
   // --------- Add 'checkoutAt' date & 'order' as completed ---- to Order details ----
   OrderDetails.findOneAndUpdate({ email, orderId }, { $set: { checkoutAt: new Date(), order: "completed" } })
-    .then(response2 => {
-      // ------------- Write a user's previous transaction as Cart History to "Cart History" collection.v
-      // User.aggregate([
-      //   {
-      //     $match: { email: email }
-      //   },
-      //   {
-      //     $lookup: {
-      //       from: 'orderDetails',
-      //       localField: 'email',
-      //       foreignField: 'email',
-      //       pipeline: [
-      //         {
-      //           $match: { order: "completed" }
-      //         },
-      //         {
-      //           $lookup: {
-      //             from: 'orderedProducts',
-      //             localField: 'orderId',
-      //             foreignField: 'orderId',
-      //             pipeline: [
-      //               {
-      //                 $lookup: {
-      //                   from: 'products',
-      //                   localField: 'id',
-      //                   foreignField: 'id',
-      //                   as: 'product'
-      //                 }
-      //               },
-      //               {
-      //                 $group: {
-      //                   _id: "$orderId", orderedProductList: {
-      //                     $push: {
-      //                       qty: "$qty", product: { $first: "$product" }
-      //                     }
-      //                   }
-      //                 }
-      //               },
-      //               {
-      //                 $project: {
-      //                   _id: 0
-      //                 }
-      //               }
-      //             ],
-      //             as: 'orderIn'
-      //           },
-
-      //         },
-      //         {
-      //           $group: {
-      //             _id: "$orderId", orderDetails: {
-      //               $push: {
-      //                 createdAt: "$createdAt", checkoutAt: "$checkoutAt", orderStatus: "$order", orderIn: { $first: "$orderIn" }
-      //               }
-      //             }
-      //           }
-      //         },
-
-      //         // { 
-      //         //   $group :{ _id :"$orderId", orderDetails : {$push: {
-      //         //       createdAt:"$createdAt",
-      //         //       checkoutAt:"$checkoutAt"
-      //         //   }}}
-      //         // },
-      //         {
-      //           $project: {
-      //             _id: 1,
-      //             orderDetails: { $first: "$orderDetails" }
-      //           }
-      //         }
-      //       ],
-      //       as: 'orderList'
-      //     }
-      //   },
-      //   {
-      //     $project: {
-      //       _id: 0,
-      //       name: 1,
-      //       email: 1,
-      //       orderList: 1
-      //     }
-      //   }
-      // ])
-      //   .then(response => res.send({ response: response[0] }))
-      //   .catch(err => res.send({ err }))
-
-      // return res.send({ response2 });
-
-      // ------- Add  'order' as completed to 'OrderedProducts'
-      OrderedProducts.updateMany({ email, orderId }, { $set: { order: "completed" } })
-        .then(response => {
-          return res.send({ response });
-        })
-        .catch(err => res.send({ err }));
-
-    })
-    .catch(err => res.send({ err }));
-
+  .then(response2 => OrderedProducts.updateMany({ email, orderId }, { $set: { order: "completed" } })
+    .then(response => res.send({ response, orderId }))
+      .catch(err => res.send({ err }))
+    )
+  .catch(err => res.send({ err }));
 }
 const cartHistory = (req, res, next) => {
   const { email } = req.body;
@@ -564,3 +466,93 @@ module.exports = {
   cartCheckout,
   cartHistory
 };
+
+
+ // ------------- Write a user's previous transaction as Cart History to "Cart History" collection.v
+  // User.aggregate([
+  //   {
+  //     $match: { email: email }
+  //   },
+  //   {
+  //     $lookup: {
+  //       from: 'orderDetails',
+  //       localField: 'email',
+  //       foreignField: 'email',
+  //       pipeline: [
+  //         {
+  //           $match: { order: "completed" }
+  //         },
+  //         {
+  //           $lookup: {
+  //             from: 'orderedProducts',
+  //             localField: 'orderId',
+  //             foreignField: 'orderId',
+  //             pipeline: [
+  //               {
+  //                 $lookup: {
+  //                   from: 'products',
+  //                   localField: 'id',
+  //                   foreignField: 'id',
+  //                   as: 'product'
+  //                 }
+  //               },
+  //               {
+  //                 $group: {
+  //                   _id: "$orderId", orderedProductList: {
+  //                     $push: {
+  //                       qty: "$qty", product: { $first: "$product" }
+  //                     }
+  //                   }
+  //                 }
+  //               },
+  //               {
+  //                 $project: {
+  //                   _id: 0
+  //                 }
+  //               }
+  //             ],
+  //             as: 'orderIn'
+  //           },
+
+  //         },
+  //         {
+  //           $group: {
+  //             _id: "$orderId", orderDetails: {
+  //               $push: {
+  //                 createdAt: "$createdAt", checkoutAt: "$checkoutAt", orderStatus: "$order", orderIn: { $first: "$orderIn" }
+  //               }
+  //             }
+  //           }
+  //         },
+
+  //         // { 
+  //         //   $group :{ _id :"$orderId", orderDetails : {$push: {
+  //         //       createdAt:"$createdAt",
+  //         //       checkoutAt:"$checkoutAt"
+  //         //   }}}
+  //         // },
+  //         {
+  //           $project: {
+  //             _id: 1,
+  //             orderDetails: { $first: "$orderDetails" }
+  //           }
+  //         }
+  //       ],
+  //       as: 'orderList'
+  //     }
+  //   },
+  //   {
+  //     $project: {
+  //       _id: 0,
+  //       name: 1,
+  //       email: 1,
+  //       orderList: 1
+  //     }
+  //   }
+  // ])
+  //   .then(response => res.send({ response: response[0] }))
+  //   .catch(err => res.send({ err }))
+
+  // return res.send({ response2 });
+
+  // ------- Add  'order' as completed to 'OrderedProducts'
